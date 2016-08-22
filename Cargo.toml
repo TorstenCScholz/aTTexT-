@@ -1,0 +1,8 @@
+﻿[package]
+name = "attext"
+description = "Simple text game for learning rust basics"
+version = "0.0.1"
+authors = ["Torsten Scholz <doaschdn@googlemail.com>"]
+
+[dependencies]
+sfml = "0.11.2"
