@@ -6,14 +6,16 @@ use sfml::system::{Vector2f};
 
 struct InputField<'a> {
     input: String,
+    position: Vector2f,
+    max_len: usize,
     texture: Text<'a>,
     background: RectangleShape<'a>,
     cursor: RectangleShape<'a>
 }
 
 impl<'a> InputField<'a> {
-    pub fn new(font: &'a Font) -> InputField<'a> {
-        let background_size = Vector2f::new(300., 40.);
+    fn new(font: &'a Font) -> InputField<'a> {
+        let background_size = Vector2f::new(200., 40.);
         let mut background = RectangleShape::new().unwrap();
         background.set_size(&background_size);
         background.set_fill_color(&Color::new_rgb(173, 255, 47));
@@ -23,15 +25,20 @@ impl<'a> InputField<'a> {
         cursor.set_size(&cursor_size);
         cursor.set_fill_color(&Color::white());
 
+        let mut text = Text::new_init("", font, 16).unwrap();
+        text.set_color(&Color::black());
+
         InputField {
             input: String::from(""),
-            texture: Text::new_init("", font, 20).unwrap(),
+            position: Vector2f::new(0., 0.),
+            max_len: 25,
+            texture: text,
             background: background,
             cursor: cursor
         }
     }
 
-    pub fn handle_input(&mut self, code: char) {
+    fn handle_input(&mut self, code: char) {
         if code == '\x08' { // Backspace has been pressed
             if self.input.len() > 0 {
                 self.input.pop();
@@ -39,14 +46,32 @@ impl<'a> InputField<'a> {
             return;
         }
 
+        if self.input.len() >= self.max_len {
+            return;
+        }
+
         self.input.push(code);
     }
 
-    pub fn update_texture(&mut self) {
+    fn update(&mut self) {
         self.texture.set_string(&self.input);
+
+        // TODO: Workaround. How can we do this better?
+        // If we replace 'position' with the direct function call, we get a compiler error:
+        // error: cannot use `self.position` because it was mutably borrowed [E0503]
+        // See also: https://github.com/rust-lang/rfcs/issues/811
+        let position = self.position;
+        self.set_position(&position);
 
         let bounds = self.texture.get_global_bounds();
         self.cursor.set_position2f(bounds.left + bounds.width, bounds.top);
+    }
+
+    fn set_position<'b>(&mut self, position: &Vector2f) {
+        self.position = *position;
+
+        self.texture.set_position(position);
+        self.background.set_position(position);
     }
 }
 
@@ -66,23 +91,28 @@ fn main() {
         .unwrap();
     window.set_vertical_sync_enabled(true);
 
-    let font = Font::new_from_file("BalooPaaji-Regular.ttf").unwrap();
+    let font = Font::new_from_file("VT323-Regular.ttf").unwrap();
 
     let mut input_field = InputField::new(&font);
+    input_field.set_position(&Vector2f::new(0., 560.));
 
     loop {
+        // Handle input
         for event in window.events() {
             match event {
                 event::Closed => return,
                 event::KeyPressed { code: Key::Escape, .. } => return,
                 event::TextEntered { code } => {
                     input_field.handle_input(code);
-                    input_field.update_texture();
                 }
                 _ => {}
             }
         }
 
+        // Update logic
+        input_field.update();
+
+        // Render
         window.clear(&Color::black());
         window.draw(&input_field);
         window.display();
