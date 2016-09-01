@@ -1,27 +1,56 @@
 extern crate sfml;
 
-use sfml::graphics::{Color, RenderTarget, RenderWindow, RectangleShape, Transformable, Shape, Font, Text};
+use sfml::graphics::{Color, RenderTarget, RenderWindow, RectangleShape, Transformable, Shape, Font, Text, Drawable, RenderStates};
 use sfml::window::{Key, VideoMode, event, window_style};
 use sfml::system::{Vector2f};
 
-fn handle_input(code: char, input: &mut String) {
-    if code == '\x08' { // Backspace has been pressed
-        if input.len() > 0 {
-            input.pop();
-            return;
+struct InputField<'a> {
+    input: String,
+    texture: Text<'a>,
+    cursor: RectangleShape<'a>
+}
+
+impl<'a> InputField<'a> {
+    pub fn new(font: &'a Font) -> InputField<'a> {
+        let cursor_size = Vector2f::new(5., 25.);
+        let mut cursor = RectangleShape::new().unwrap();
+        cursor.set_size(&cursor_size);
+        cursor.set_fill_color(&Color::white());
+
+        InputField {
+            input: String::from(""),
+            texture: Text::new_init("", font, 20).unwrap(),
+            cursor: cursor
         }
     }
 
-    input.push(code);
+    pub fn handle_input(&mut self, code: char) {
+        if code == '\x08' { // Backspace has been pressed
+            if self.input.len() > 0 {
+                self.input.pop();
+            }
+            return;
+        }
+
+        self.input.push(code);
+    }
+
+    pub fn update_texture(&mut self) {
+        self.texture.set_string(&self.input);
+
+        let bounds = self.texture.get_global_bounds();
+        self.cursor.set_position2f(bounds.left + bounds.width, bounds.top);
+    }
 }
 
-fn render_cursor(window: &mut RenderWindow, cursor: &RectangleShape) {
-    window.draw(cursor);
+impl<'a> Drawable for InputField<'a> {
+    fn draw<RT: RenderTarget>(&self, render_target: &mut RT, _: &mut RenderStates) {
+        render_target.draw(&self.texture);
+        render_target.draw(&self.cursor);
+    }
 }
 
 fn main() {
-    let cursor_size = Vector2f::new(5., 25.);
-
     let mut window = RenderWindow::new(VideoMode::new_init(800, 600, 32),
                                        "Attext!",
                                        window_style::CLOSE,
@@ -29,19 +58,9 @@ fn main() {
         .unwrap();
     window.set_vertical_sync_enabled(true);
 
-    let mut input = String::from("");
-
     let font = Font::new_from_file("arial.ttf").unwrap();
-    let mut text = Text::new_init("Ag", &font, 20).unwrap();
 
-    let mut cursor = RectangleShape::new().unwrap();
-    cursor.set_size(&cursor_size);
-    cursor.set_fill_color(&Color::white());
-
-    let initial_bounds = text.get_global_bounds();
-    cursor.set_size(&(Vector2f::new(3., initial_bounds.height)));
-
-    text.set_string("");
+    let mut input_field = InputField::new(&font);
 
     loop {
         for event in window.events() {
@@ -49,20 +68,15 @@ fn main() {
                 event::Closed => return,
                 event::KeyPressed { code: Key::Escape, .. } => return,
                 event::TextEntered { code } => {
-                    handle_input(code, &mut input);
-
-                    text.set_string(&input);
-
-                    let bounds = text.get_global_bounds();
-                    cursor.set_position2f(bounds.left + bounds.width, bounds.top);
+                    input_field.handle_input(code);
+                    input_field.update_texture();
                 }
                 _ => {}
             }
         }
 
         window.clear(&Color::black());
-        window.draw(&text);
-        render_cursor(&mut window, &cursor);
+        window.draw(&input_field);
         window.display();
     }
 }
