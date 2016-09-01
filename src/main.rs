@@ -7,11 +7,17 @@ use sfml::system::{Vector2f};
 struct InputField<'a> {
     input: String,
     texture: Text<'a>,
+    background: RectangleShape<'a>,
     cursor: RectangleShape<'a>
 }
 
 impl<'a> InputField<'a> {
     pub fn new(font: &'a Font) -> InputField<'a> {
+        let background_size = Vector2f::new(300., 40.);
+        let mut background = RectangleShape::new().unwrap();
+        background.set_size(&background_size);
+        background.set_fill_color(&Color::new_rgb(173, 255, 47));
+
         let cursor_size = Vector2f::new(5., 25.);
         let mut cursor = RectangleShape::new().unwrap();
         cursor.set_size(&cursor_size);
@@ -20,6 +26,7 @@ impl<'a> InputField<'a> {
         InputField {
             input: String::from(""),
             texture: Text::new_init("", font, 20).unwrap(),
+            background: background,
             cursor: cursor
         }
     }
@@ -45,6 +52,7 @@ impl<'a> InputField<'a> {
 
 impl<'a> Drawable for InputField<'a> {
     fn draw<RT: RenderTarget>(&self, render_target: &mut RT, _: &mut RenderStates) {
+        render_target.draw(&self.background);
         render_target.draw(&self.texture);
         render_target.draw(&self.cursor);
     }
@@ -58,7 +66,7 @@ fn main() {
         .unwrap();
     window.set_vertical_sync_enabled(true);
 
-    let font = Font::new_from_file("arial.ttf").unwrap();
+    let font = Font::new_from_file("BalooPaaji-Regular.ttf").unwrap();
 
     let mut input_field = InputField::new(&font);
 
